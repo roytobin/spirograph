@@ -2,7 +2,7 @@
 A desktop browser client-side app for visualizing multicolor spirograph &amp; hypotrochoid curves
 
 <br/>
-Live as of April 2021 https://roytobin.github.io/spirograph
+Live as of April 2021 https://roytobin.github.io/spirograph/
 
 ## Introduction
 
