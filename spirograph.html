@@ -5,11 +5,16 @@
 <title>Spirograph</title>
 
 <style>
+.invisible {
+    visibility: hidden;
+}
 :root {
     --classic_vis: visible;
     --reality_vis: hidden;
     --abstract_vis: hidden;
     --relabs_vis:  hidden;
+    --clarel_vis: visible;
+    --numElementSize: 95%;
 }
 * {
 	/* To keep the width at 300px, no matter the amount of padding,
@@ -84,12 +89,16 @@ body {
 .relabs {
     visibility: var(--relabs_vis);
 }
+.clarel {
+    visibility: var(--clarel_vis);
+}
 .medfloat {
     width: 8em;
     margin: 4;
     margin-left: 2px;
     margin-right: 4px;
     padding: 4;
+    font-size: var(--numElementSize);
 }
 .medint {
     width: 5em;
@@ -97,6 +106,7 @@ body {
     margin-left: 2px;
     margin-right: 4px;
     padding: 4;
+    font-size: var(--numElementSize);
 }
 .smallint {
     width: 5em;
@@ -105,6 +115,7 @@ body {
     margin-right: 4px;
     margin-bottom: 8px;
     padding: 4;
+    font-size: var(--numElementSize);
 }
 
 li {
@@ -126,13 +137,59 @@ li a {
 
 <script>
 "use strict"
+const MANUAL = Symbol();
+const AUTO   = Symbol();
 const twopi = 2.0 * Math.PI;
+const piOverTwo = Math.PI / 2.0;
 const c_gtlabel = "Gear Teeth";
 const c_gtlist  = "Gear Teeth (list)";
-const c_polabel = "Penhole Offset %";
-const c_polist  = "Penhole Offset % (list)";
 const c_rtlabel = "Ring Teeth";
 const c_rtlist  = "Ring Teeth (list)";
+const c_stlabel = "Start Tooth";
+const c_stlist  = "Start Tooth (list)";
+const c_polabel = "Penhole Offset %";
+const c_polist  = "Penhole Offset % (list)";
+const CLASSIC  = Symbol();
+const REALITY  = Symbol();
+const ABSTRACT = Symbol();
+var paletteIndex = 0;
+const palette1 = [
+// From 100 brilliant color combinations canvas.com
+'#f98866 #Ff420e #80BD9E #89Da59', // 01. Fresh & Bright
+'#90afc5 #336b87 #2a3132 #763626', // 02. subdued & Professional
+'#46211a #693d3d #ba5536 #a43820', // 03. Dark & Earthy
+'#505160 #68829e #aebd38 #598234', // 04. Crisp & Dramatic
+'#003b46 #07575b #66a5ad #c4dfe6', // 04. cool blues
+'#2e4600 #486b00 #a2c523 #7d4427', // 06. Outdoorsy & Natural
+'#98dbc6 #5bc8ac #e6d72a #518d9e', // 09. Refreshing & Pretty
+'#324851 #86ac41 #34675c #7da3a1', // 10. Playful Greens & Blues
+'#4cb5f5 #b7b8b6 #34675c #b3c100', // 11. Fresh & energetic
+'#f4cc70 #de7a22 #20948b #6ab187', // 12. Surf & Turf
+'#f1f1f2 #bcbabe #a1d6e2 #1995ad', // 14. Icy Blues & Grays
+'#75b1a9 #d9b44a #4f6457 #acd0c0', // 17. stylish & Retro
+'#34888c #7caa2d #f5e356 #cb6318', // 23. summer sunflower
+'#0f1b07 #ffffff #5c821a #c6d166', // 24. modern & Crisp
+'#626d71 #cdcdc0 #ddbc95 #b38867', // 26. neutral & Versatile
+'#a1be95 #e2dfa2 #92aac7 #ed5752', // 32. serene & spa-like
+'#4897d8 #ffdb5c #fa6e59 #f8a055', // 33. fun & Tropical
+'#af4425 #662e1c #ebdcb2 #c9a66b', // 34. spicy neutrals
+'#c1e1dc #ffccac #ffeb94 #fdd475', // 35. Pastels
+'#f4ec6a #bbcf4a #e73f0b #a11f0c', // 38. crisp complementary colors
+'#eae2d6 #d5c3aa #867666 #e1b80d', // 42. Polished & Inviting
+'#a10115 #d72c16 #f0efea #c0b2b5', // 44. wintery reds
+'#301b28 #523634 #b6452c #ddc5a2', // 46. chocolatey browns
+'#000b29 #d70026 #58f5f2 #edb83d', // 52. Bold & Basic
+'#d24136 #eb8a3e #ebb582 #785a46', // 56. Sun-kissed village
+'#f47d4a #e1315b #ffec5c #008dcb', // 60. Candy-coated brights
+'#16253d #002c54 #efb509 #cd7213', // 62. classy & Timeless
+'#00cffa #ff0038 #ffce38 #020509', // 65. Nightlife
+'#ffccbb #6eb5c0 #006c84 #e2e8e4', // 70. Arctic sunrise
+'#8c0004 #c8000a #e8a735 #e2c499', // 71. Mediterranean Afternoon
+'#2f2e33 #d5d6d2 #ffffff #3a5199', // 77. sleek & Modern
+'#31a2ac #af1c1c #f0eff0 #2f2f28', // 79. beyond black & white
+'#5f968e #bfdccf #e05858 #d5c9b1', // 86. subtle & Versatile
+'#42313a #6c2d2c #9f4636 #f1dcc9', // 91. Dark & Handsome
+];
 var fewRatio = [0x7805,0x7305,0x6e05,0x6905,0x6405,0x7806,0x7606,0x7506,0x7006,0x6306,0x4b05,0x5106,
   0x3e05,0x4506,0x4006,0x760c,0x5409,0x580a,0x740e,0x3f08,0x680e,0x640e,0x440a,0x410a,0x4b0c,0x3c0a,
   0x450c,0x6412,0x400c,0x3e0c,0x3c0c,0x5712,0x460f,0x6416,0x420f,0x5e16,0x4b12,0x3c0f,0x3f10,0x641a,
@@ -276,6 +333,7 @@ var Anticlockwise = -1;
 var ringTeeth = [105];
 var gearTeeth = [60];
 var Penhole = [63];
+var StartTooth = [0];
 var R = 400;
 var r = R;
 var revolution = 0;
@@ -283,17 +341,84 @@ var k = 0;
 var rotation = 0;
 var division = 0;
 var Color = ["blue"];
+var Domain = "white";   // the "background" color of the canvas
 var Thickness = [1.3];
 var Repeat = 0;
 var Skip = 1;
 var Dirty = true;
-var Mode;
-var Control = "classic";
+var Mode = AUTO;
+var Autoscale = false;
+var Control = CLASSIC;
 var discX = [];
 var discY = [];
 var gearX = [];
 var gearY = [];
 
+function hslFunc (str, low, hi, cnt) {  // low, hi, cnt from capture groups
+    let before, after, incr;
+    let res = "";
+
+    [before, /*discard*/, after] = str.split(/(x\d+|[\d\.]+\.\.[\d\.]+)/);
+
+    //print(before,after,low,hi,cnt);
+
+    res += ` ${before}${low}${after}`;
+
+    low  = Number(low);
+    hi   = Number(hi);
+    cnt  = Number(cnt);
+    cnt  = (cnt > 360) ? 360 : cnt;	// enforce a reasonable upper limit
+    cnt  =   (cnt < 2) ?   2 : cnt;	// avoid divide-by-zero
+    incr = (hi-low)/(cnt-1);  // OK if lo > hi then incr is negative
+
+    if ( ! isFinite(incr) ) {
+        return res;
+    }
+    for (let idx=1; idx < cnt-1; ++idx) {
+        let ss = (low+idx*incr).toFixed(1);
+        res += ` ${before}${ss}${after}`;
+    }
+    res += ` ${before}${hi}${after}`;
+    return res;
+}
+function rbowFunc (str) {
+    let span;
+    let param = [];
+
+    let args = str.split(/[\s,a-z()]+/i);
+
+    for (let e of args) {
+        if (e.length <= 0)
+            continue;
+        param.push( Number(e) );
+    }
+
+    span = param[0] || 20;
+    span = (span > 360) ? 360 : span;  // enforce a reasonable upper limit
+
+    let result = "";
+    for (let k = 0; k < 360; k += 360/span) {
+        let rr = Math.round(k);
+        result += ` hsl(${rr},80%,48%)`;
+    }
+    return result;
+}
+// process tokens that look like 12..23x17 into an expanded list.
+//
+function rangeopFunc (_, acc, end, inc) {
+    acc = Number(acc);  // 1st capture group
+    end = Number(end);  // 2nd capture group
+    inc = Number(inc);  // 3rd capture group
+
+    inc = (inc > 1000) ? 1000 : inc;    // enforce a reasonable upper limit
+    inc =    (inc < 2) ?    2 : inc;    // avoid divide-by-zero
+    let result = [];
+    for (let k = 0; k < inc; ++k) {
+        let x = acc + k * (end-acc) / (inc-1);
+        result.push ( x.toFixed(2) );
+    }
+    return result.join(" ");
+}
 function modulo(a,b) {
     if ( a < 0)
         return b+a;
@@ -309,29 +434,59 @@ function optimize(a,b) {
     let gg = GCD(a,b);
     return [a/gg, b/gg];
 }
+function _code1_absmax(arr) {
+    let max = 0.0;
+    for (let x of arr) {
+        let tmp = Number(x);
+
+        if (isNaN(tmp))
+            continue;
+
+        tmp = Math.abs(tmp);
+        max = (tmp > max) ? tmp : max;
+    }
+    return max;
+}
+function _code2_absmax(arr) {
+    // Idea: 1) filter() out non-numbers then 2) take array's max with apply()
+    // One-liner?  Faster?
+}
+// Take a *heterogeneous* array, possibly with non-numbers,
+// and return the Number representing the largest absolute value.
+//
+function absmax(arr) {    // ABSolute value MAXimum
+    return _code1_absmax(arr);
+}
 function sp_expand(s) {   // take a string and return an expanded list of tokens
-    // This regular expression expands substrings that look like (stuff)x4
+    // This re expands substrings that look like hsl(17..250,61%,38%)x9
+    // Note the range operator of two dots and the required count operator "by" eg. "by 9"
+    s = s.replace( /\bhsl\(.*?([\d\.]+)\.\.([\d\.]+).*?\)x(\d+)/gi, hslFunc);
+    // This regular expression replicates substrings that look like (stuff)x4
     s = s.replace( /\((.+?)\)x(\d+)/gi, function (all,c1,c2) {  // c1 and c2 are capture groups
                 let ret = "";
+		c2 = Math.min(900, c2);
                 while (c2--) { ret += " "+c1; }
                 return ret;
             });
-    // This re expands substrings that look like bluex3
+    // This re expand substrings that look like 'range' syntax: 12..23x17
+    s = s.replace(/\b([.\d]+)\.\.([.\d]+)x(\d+)\b/gi, rangeopFunc);
+    // This re replicates substrings that look like bluex3
     s = s.replace( /(\S+)x(\d+)/gi, function (all,c1,c2) {  // c1 and c2 are capture groups
                 let ret = "";
+		c2 = Math.min(900, c2);
                 while (c2--) { ret += " "+c1; }
                 return ret;
             });
+    s = s.replace(/\brbow\(.*?\)/gi, rbowFunc);
     s = s.trim();
+    //console.log("sp_expand() ", s);
     return s.split(/\s+/);
 }
 function sp_fillcusp() {
-    let x, y;
-
     relcu = [];
-    for (x in cusp) {
+    for (let x in cusp) {
         relcu[x] = [];
-	for (y in cusp[x]) {
+	for (let y in cusp[x]) {
 	    let r = (cusp[x][y] & 0xff00) >> 8;   // extract the ring teeth, encoded in the upper byte
 	    relcu[x].push( (cusp[x][y]&0xff) / r );   // divide into the gear teeth, in lower byte
 	    //console.log("sp_fillcusp() ", cusp[x][y], r, relcu[x][y]);
@@ -339,16 +494,14 @@ function sp_fillcusp() {
     }
 }
 function sp_fillratio() {
-    let x;
-
     calcRatio = [];
-    for (x in fewRatio) {
+    for (let x in fewRatio) {
 	let rr = (fewRatio[x] & 0xff00) >> 8;   // extract the ring teeth, encoded in the upper byte
 	calcRatio.push(  (fewRatio[x]&0xff) / rr);  // divide into the gear teeth in lower byte
     }
 }
 function sp_sched() {
-    if (Mode == "manual") {
+    if ( Mode === MANUAL ) {
         return;
     }
     sp_new();
@@ -361,13 +514,13 @@ function sp_sched() {
 function sp_manual() {
     let elem  = document.getElementById("manual");
     if ( elem.checked ) {
-        Mode = "manual";
+        Mode = MANUAL;
     }
 }
 function sp_automatic() {
     let elem  = document.getElementById("automatic");
     if ( elem.checked ) {
-	Mode = "automatic";
+	Mode = AUTO;
     }
 }
 function sp_abstract() {
@@ -376,7 +529,8 @@ function sp_abstract() {
     root.style.setProperty('--reality_vis', 'hidden');
     root.style.setProperty('--abstract_vis', 'visible');
     root.style.setProperty('--relabs_vis', 'visible');
-    Control = "abstract";
+    root.style.setProperty('--clarel_vis', 'hidden');
+    Control = ABSTRACT;
     elem  = document.getElementById("classic");
     elem.setAttribute("style", "font-size:medium");
     elem  = document.getElementById("reality");
@@ -385,6 +539,7 @@ function sp_abstract() {
     elem.setAttribute("style", "font-size:x-large");
     document.getElementById("label2").innerHTML = c_rtlist;
     document.getElementById("label5").innerHTML = c_gtlist;
+    document.getElementById("label8").innerHTML = c_stlist;
     document.getElementById("label10").innerHTML = c_polist;
 
     sp_fillcusp();
@@ -399,7 +554,8 @@ function sp_reality() {
     root.style.setProperty('--reality_vis', 'visible');
     root.style.setProperty('--abstract_vis', 'hidden');
     root.style.setProperty('--relabs_vis', 'visible');
-    Control = "reality";
+    root.style.setProperty('--clarel_vis', 'visible');
+    Control = REALITY;
     elem  = document.getElementById("classic");
     elem.setAttribute("style", "font-size:medium");
     elem  = document.getElementById("reality");
@@ -408,6 +564,7 @@ function sp_reality() {
     elem.setAttribute("style", "font-size:medium");
     document.getElementById("label2").innerHTML = c_rtlabel;
     document.getElementById("label5").innerHTML = c_gtlabel;
+    document.getElementById("label8").innerHTML = c_stlabel;
     document.getElementById("label10").innerHTML = c_polist;
 }
 function sp_classic() {
@@ -416,7 +573,8 @@ function sp_classic() {
     root.style.setProperty('--reality_vis', 'hidden');
     root.style.setProperty('--abstract_vis', 'hidden');
     root.style.setProperty('--relabs_vis', 'hidden');
-    Control = "classic";
+    root.style.setProperty('--clarel_vis', 'visible');
+    Control = CLASSIC;
     elem  = document.getElementById("classic");
     elem.setAttribute("style", "font-size:x-large");
     elem  = document.getElementById("reality");
@@ -425,30 +583,31 @@ function sp_classic() {
     elem.setAttribute("style", "font-size:medium");
     document.getElementById("label2").innerHTML = c_rtlabel;
     document.getElementById("label5").innerHTML = c_gtlabel;
+    document.getElementById("label8").innerHTML = c_stlabel;
     document.getElementById("label10").innerHTML = c_polabel;
     //console.log("sp_classic() ", Control);
 }
-function sp_set_ringtable(rt) {
+function sp_set_ringtable(rt,r) {
     let angle;
     let tooth;
 
     for (tooth = 0; tooth < rt; ++tooth) {
-        angle = (tooth * twopi) / rt;
+        angle = piOverTwo + (tooth * twopi) / rt;
 	discX[tooth] = (R-r) * Math.cos(angle);
 	discY[tooth] = (R-r) * Math.sin(angle);
     }
     //console.log("sp_set_ringtable()", discX[tooth]);
 }
-function sp_set_geartable(ph) {
+function sp_set_geartable(ph, div) {
     let angle;
     let idx;
 
-    for (idx = 0; idx < division; ++idx) {
-        angle = (idx * twopi) / division;
+    for (idx = 0; idx < div; ++idx) {
+        angle = piOverTwo + (idx * twopi) / div;
 	gearX[idx] = ph * Math.cos(angle);
 	gearY[idx] = ph * Math.sin(angle);
     }
-    //console.log("sp_set_geartable()", gearX[division-1], angle);
+    //console.log("sp_set_geartable()", gearX[div-1], angle);
 }
 function sp_background() {
     if ( ! Dirty ) {
@@ -459,13 +618,13 @@ function sp_background() {
     let initX, initY;
     let c = document.getElementById("myCanvas");
     let ctx = c.getContext("2d");
-    let iter;
-for (iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, Penhole.length); ++iter) {
+for (let iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, StartTooth.length, Penhole.length); ++iter) {
 
     let rite;  // local for RIng TEeth to use for this iteration
     rite = ringTeeth.shift();
     ringTeeth.push(rite);
     rite = Math.round(Number(rite));
+    rite = Math.min(rite, 2000);
     if ( isNaN(rite) ) {
         return;
     }
@@ -477,6 +636,7 @@ for (iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, Penhole.lengt
     gete = gearTeeth.shift();
     gearTeeth.push(gete);
     gete = Math.round(Number(gete));
+    gete = Math.min(gete, 2000);
     if ( isNaN(gete) ) {
         return;
     }
@@ -489,7 +649,7 @@ for (iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, Penhole.lengt
     let penwidth; 
     r = 1.0 * R * (gete/rite);
 
-    sp_set_ringtable(rite);
+    sp_set_ringtable(rite, r);
 
     revolution = gete/gcd;
     k          = rite/gcd;
@@ -500,21 +660,39 @@ for (iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, Penhole.lengt
     let penhole = Penhole.shift();
     Penhole.push(penhole);
     penhole = Number(penhole);
+    penhole = (isNaN(penhole)) ? 0 : penhole;
     penhole = r * penhole/100.0;
 
-    sp_set_geartable(penhole);
+    let factor =  r * (100.0 - absmax(Penhole)) / 101.0;
+    factor = 1.0 + factor/R;
+    factor = (!Autoscale) ? 1.0 : factor;
+
+	    //let start = (new Date()).getTime();
+    sp_set_geartable(penhole, division);
+	    //let stop = (new Date()).getTime();
+	    //console.log("0.05 sp_background()", stop - start, "milliseconds div=", division);
+
+    let start_tooth = StartTooth.shift();
+    StartTooth.push(start_tooth);
+    start_tooth = Math.round(Number(start_tooth));
+    start_tooth = start_tooth % rite;
+    if ( start_tooth < 0  ||  isNaN(start_tooth) ) {
+        start_tooth = 0;
+    }
 
     let repeat = Repeat + 1;
-    //console.log("0.1 sp_back()", Repeat, Skip, repeat);
+    //console.log("0.1 sp_back()", Repeat,Skip,repeat, start_tooth, rite, gete, penhole, factor);
     while (repeat-- > 0) {
         let moveTo = 0;
         let gear = (repeat * Skip) % division; // initial tooth the ambulatory gear is on
         for (let rev=0; rev < revolution; ++rev) {
-	    for (let tooth=0; tooth < rite; ++tooth) {
+	    for (let tidx=0; tidx < rite; ++tidx) {
 
 	        // Add the two Cartesian coordinates
-	        let x_pt = discX[tooth] + gearX[gear];
-		let y_pt = discY[tooth] + gearY[gear];
+	        let x_pt = factor * (discX[start_tooth] + gearX[gear]);
+		let y_pt = factor * (discY[start_tooth] + gearY[gear]);
+
+		start_tooth = ++start_tooth % rite;
 
 		//console.log("0.2 sp_back()", tooth, gear, division);
 
@@ -553,8 +731,11 @@ for (iter = 0; iter < Math.max(ringTeeth.length, gearTeeth.length, Penhole.lengt
 	    }
 	}
 	ctx.lineTo(initX, initY);
-        if ( hue.localeCompare("skip") ) {
+        if (hue !== "skip") {
+	    //let start = (new Date()).getTime();
 	    ctx.stroke();
+	    //let stop = (new Date()).getTime();
+	    //console.log("0.9 sp_background()", stop - start, "milliseconds moves=",moveTo);
 	}
     }
   }
@@ -578,6 +759,16 @@ function sp_thick() {
     //console.log("sp_thick() ", Thickness);
     sp_sched();
 }
+function sp_palette() {
+    let value  = document.getElementById("palette").value;
+    if (value === "random") {
+        value = palette1[  paletteIndex++ % palette1.length ];
+    }
+    document.getElementById("color").value = value;
+    Color = sp_expand(value);
+    //console.log("sp_palette() ", value);
+    sp_sched();
+}
 function sp_color() {
     let elem  = document.getElementById("color");
     Color = sp_expand(elem.value);
@@ -586,7 +777,7 @@ function sp_color() {
 }
 function sp_penhole() {
     let elem;
-    if ( !Control.localeCompare("classic")) {
+    if ( Control === CLASSIC ) {
 	elem  = document.getElementById("penhole");
 	Penhole = [elem.value];
     }
@@ -599,11 +790,11 @@ function sp_penhole() {
 }
 function sp_ring() {
     let elem;
-    if ( !Control.localeCompare("classic")) {
+    if ( Control === CLASSIC ) {
 	elem  = document.getElementById("selring");
 	ringTeeth = [ elem.value ];
     }
-    else if ( !Control.localeCompare("reality")) {
+    else if ( Control === REALITY ) {
 	elem  = document.getElementById("ringteeth");
 	ringTeeth = [ elem.value ];
     }
@@ -616,11 +807,11 @@ function sp_ring() {
 }
 function sp_gear() {
     let elem;
-    if ( !Control.localeCompare("classic")) {
+    if ( Control === CLASSIC ) {
 	elem  = document.getElementById("selgear");
 	gearTeeth = [ elem.value ];
     }
-    else if ( !Control.localeCompare("reality")) {
+    else if ( Control === REALITY ) {
 	elem  = document.getElementById("gearteeth");
 	gearTeeth = [ elem.value ];
     }
@@ -629,6 +820,19 @@ function sp_gear() {
 	gearTeeth = sp_expand(elem.value);
     }
     //console.log("sp_gear() ", gearTeeth);
+    sp_sched();
+}
+function sp_starttooth() {
+    let elem;
+    if ( Control === ABSTRACT ) {
+        elem = document.getElementById("starttext");
+	StartTooth = sp_expand(elem.value);
+    }
+    else {
+        elem = document.getElementById("starttooth");
+	StartTooth = [ elem.value ];
+    }
+    //console.log("sp_starttooth() ", StartTooth);
     sp_sched();
 }
 function sp_setringgear(encoding) {
@@ -688,15 +892,33 @@ function sp_ratio() {
     //console.log("sp_ratio() ", theRatio);
     sp_sched();
 }
+function sp_autoscale() {
+    let elem  = document.getElementById("autoscale");
+    Autoscale = (elem.checked) ? true : false;
+    //console.log("sp_autoscale() ", Autoscale);
+    sp_sched();
+}
+function sp_domain() {
+    let value = document.getElementById("domain").value;
+    if (value === "palette") {
+        [Domain] = document.getElementById("color").value.split(/\s+/);
+    }
+    else {
+        Domain = value;
+    }
+    //console.log("sp_domain() ", Domain);
+    sp_sched();
+}
 function sp_new() {
-     let c = document.getElementById("myCanvas");
-     let ctx = c.getContext("2d");
-     ctx.fillStyle = "#ffffff";
-     ctx.fillRect(0, 0, 800, 800);
+    let c = document.getElementById("myCanvas");
+    let ctx = c.getContext("2d");
+    ctx.fillStyle = Domain;
+    ctx.fillRect(0, 0, 800, 800);
 }
 function sp_draw() {
     sp_ring();
     sp_gear();
+    sp_starttooth();
     sp_penhole();
     sp_color();
     sp_thick();
@@ -705,28 +927,46 @@ function sp_draw() {
     Dirty = true;
     setTimeout(sp_background, 0);
 }
+function sph_tooth() {
+    alert("The tooth or teeth of the ring to start on.  Tooth zero is at 12 o'clock.\n"
+    +     "The 'range' syntax is available to concisely express a list.  For example,\n"
+    +     "the syntax 0..17x18 will expand to a list of numbers from 0 to 17.0\n\n\n"
+    );
+}
 function sph_thick() {
     alert("The thickness (or darkness or boldness) of the curve to be drawn.\n"
     +     "Decimal point is allowed.  Value 0.2 is a very fine line, 1.0 average, 3.0 bold.\n"
-    +     "SEE ALSO color help for x<num> repetition shortcut\n\n\n"
+    +     "SEE ALSO color help for x<num> repetition shortcut\n\n"
+    +     "The 'range' syntax is available to concisely express a list.  For example,\n"
+    +     "the syntax 0.6..3.1x22 is expanded to a list of 22 decimal numbers evenly\n"
+    +     "spaced from 0.6 to 3.1.\n\n\n"
     );
 }
 function sph_penhole() {
-    alert("The penhole location on the moving gear.  The value represents the offset expressed\n"
-    +     "as a percentage from the center toward the edge.\n"
+    alert("The penhole location on the moving gear.  The values represent the offset\n"
+    +     "expressed as a percentage from the center toward the edge.\n"
     +     "A value of 0 is the center of the gear, and the resulting curve is a circle.\n"
     +     "A value of 100 is the edge of the gear, and the resulting curve is a hypocycloid.\n"
-    +     "Negatives are allowed.  Try -63  63 with two complementary colors.\n\n\n"
+    +     "Negatives are allowed.  Try -63  63 with two complementary colors.\n"
+    +     "\n"
+    +     "The 'range' syntax is available to concisely express a list.  For example,\n"
+    +     "the syntax 63..49x33 is expanded to a list of 33 decimal numbers evenly\n"
+    +     "spaced from 63.0 to 49.0.\n\n\n"
     );
 }
 function sph_color() {
-    alert("Enter a list of colors using HTML conventions, eg.\n\n"
+    alert("Enter a spaced list of colors using HTML conventions, eg.\n\n"
     +     "    blue  gold  #d1ac23  hsl(0,100%,50%)\n\n"
     +     "Use the word 'skip' to not draw anything for that repeat.\n"
     +     "Use x<num> after the color name as a shortcut for repetition, eg.\n\n"
-    +     "    bluex4 skipx2 gold\n\n"
+    +     "    bluex4 skipx2 gold  ...expands to...  blue blue blue blue skip skip gold\n\n"
     +     "Or even\n\n"
-    +     "    (blue gold)x2  skip  (red pink)x2\n\n\n"
+    +     "    (blue gold)x2  skip  (red pink)x2\n\n"
+    +     "You can specify a list of colors all at once with a 'rainbow' macro.  For example,\n"
+    +     "rbow(19) will expand to a list of 19 evenly spaced colors of the rainbow.\n\n"
+    +     "You can specify a fade of a single color with the 'range' syntax.  For example,\n"
+    +     "hsl(210,88%,39..81%)x13 expands to a list of 13 evenly spaced shades\n"
+    +     "of the hue 210 (blue) from dark to light.  Note the percent sign characters.\n"
     );
 }
 </script>
@@ -739,9 +979,9 @@ function sph_color() {
   </div>
 
   <div class="column menu">
-  <input type="radio" id="manual" name="mode" onclick="sp_manual()" value="manual" checked>
+  <input type="radio" id="manual"    name="mode" onclick="sp_manual()" value="manual">
   <label for="manual">Manual</label>
-  <input type="radio" id="automatic" name="mode" onclick="sp_automatic()" value="automatic">
+  <input type="radio" id="automatic" name="mode" onclick="sp_automatic()" value="automatic" checked>
   <label for="automatic">Automatic</label>
   <br>
         <ul>
@@ -752,12 +992,12 @@ function sph_color() {
   </div>
   <div class="column menu">
   <form>
-  <label id="label2" for="selring">Ring Teeth</label>
-  <select class=classic id="selring" name="selring" onchange="sp_ring()">
+  <label id="label2" >Ring Teeth</label>
+  <select class=classic id="selring" onchange="sp_ring()">
     <option value=105>105</option>
     <option value=96>96</option>
   </select>
-  <input class="medint reality" type=number id="ringteeth" name="ringteeth" onchange="sp_ring()" min=20 max=120 value=105><br>
+  <input class="medint reality" type=number id="ringteeth" name="ringteeth" onchange="sp_ring()" min=20 max=999 value=105>
   <br>
   <input class=abstract type="text" id="ringtext" name="ringtext" onchange="sp_ring()" value=105><br>
   <label id="label5" for="selgear">Gear Teeth</label>
@@ -778,28 +1018,53 @@ function sph_color() {
     <option value=30>30</option>
     <option value=24>24</option>
   </select>
-  <input class="medint reality" type=number id="gearteeth" name="gearteeth" onchange="sp_gear()" min=0 max=119 value=56><br>
+  <input class="medint reality" type=number id="gearteeth" name="gearteeth" onchange="sp_gear()" min=0 max=999 value=56>
   <br>
-  <input class=abstract type="text" id="geartext" name="geartext" onchange="sp_gear()" value=56><br>
+  <input class=abstract type="text" id="geartext" name="geartext" onchange="sp_gear()" value=56>
   <br>
+  <label id="label8" for"selst" > Start Tooth </label>
+  <a class=clickable style="font-size:large; color:#339ec4" onclick="sph_tooth()">&#9432</a>
+  <select class="invisible" id="selst" name="selst">
+    <option value=0>00</option>
+  </select>
+  <input class="medint clarel" type="number" id="starttooth" onchange="sp_starttooth()" min="0" max="430" value="0">
+  <input class="abstract" type="text" id="starttext" onchange="sp_starttooth()" value="0"><br>
+  </div>
   <div class="abstract reality">
   <label for="cusp">Cusps </label>
-  <input class="smallint" type="number" id=cusp name=cusp onchange="sp_cusp()" min=2 max=119 value=7>
+  <input class="smallint" type="number" id=cusp name=cusp onchange="sp_cusp()" min=2 max=99 value=7>
   <label for="relratio">by ratio</label>
-  <input class="smallint" type="number" id="relratio" onchange="sp_relratio()" step="0.01" value="0.05">
+  <input class="medint" type="number" id="relratio" onchange="sp_relratio()" step="0.01" value="0.050">
   <br>
   <label for="ratio">Gear/Ring Ratio</label>
   <input class="medfloat" type="number" id="ratio" onchange="sp_ratio()" step="0.005" value=0.5>
-  <br>
   </div>
+  <br>
   <label id=label10 for="penhole">Penhole Offset %</label>
   <a class=clickable style="font-size:large; color:#339ec4" onclick="sph_penhole()">&#9432</a>
   <input class="classic medint" type="number" id="penhole" name="penhole" onchange="sp_penhole()" min="0" max="100" value="64">
   <br>
   <input class="relabs" type="text" id="penholelist" onchange="sp_penhole()" value="63"><br>
   <br>
-  <label for="color">Pen Color (list) <a class=clickable style="font-size:large; color:#339ec4" onclick="sph_color()">&#9432</a></label><br>
-  <input type="text" id="color" name="color" onchange="sp_color()" value="blue  royalblue  #1e90ff  skyblue"><br>
+  <label for="color">Color Palette
+  <select id="palette" onchange="sp_palette()">
+    <option onclick="sp_palette()" value="blue  royalblue  #1e90ff  skyblue">Original Blue</option>
+    <option onclick="sp_palette()" value="random">                           Random</option>
+    <option onclick="sp_palette()" value="rbow(19)">                         Rainbow 19</option>
+    <option onclick="sp_palette()" value="hsl(0..359,69%,42%)x21">           Rainbow 21</option>
+    <option onclick="sp_palette()" value="hsl(41,88%,39..81%)x13">           Orange Fade 13</option>
+    <option onclick="sp_palette()" value="#021c1e #004445 #2c7873 #6fb98f">  Watery Blue-Greens</option>
+    <option onclick="sp_palette()" value="#8d230f #1e434c #9b4f0f #c99e10">  Autumn</option>
+    <option onclick="sp_palette()" value="#9a9eab #5d5353 #ec96a4 #dfe166">  Birds &amp Berries</option>
+    <option onclick="sp_palette()" value="#50312f #cb0000 #e4ea8c #3f6c45">  Bold Berries</option>
+    <option onclick="sp_palette()" value="#eb8a44 #f9dc24 #4b7447 #8eba43">  Shades of Citrus</option>
+    <option onclick="sp_palette()" value="#2b616d #b2dbd5 #ffffff #fa8d62">  Cheerful &amp Friendly</option>
+    <option onclick="sp_palette()" value="#a5c3cf #f3d3b8 #e59d5c #a99f3c">  Costal</option>
+  </select>
+  <br>
+  <input type="text" id="color" name="color" onchange="sp_color()" value="blue  royalblue  #1e90ff  skyblue">
+  <a class=clickable style="font-size:large; color:#339ec4" onclick="sph_color()">&#9432</a></label>
+  <br>
   <br>
   <label for="color">Pen Thickness (list) <a class=clickable style="font-size:large; color:#339ec4" onclick="sph_thick()">&#9432</a></label><br>
   <input type="text" id="thickness" name="thickness" onchange="sp_thick()" value="0.6  0.8  1.0  1.2"><br>
@@ -808,7 +1073,19 @@ function sph_color() {
   <input class="smallint" type="number" id="repeat" name="repeat" onchange="sp_repeat()" size="2" value="4" min="0" max="9999" step="1">times after<br>
   <label for="skip">skipping </label>
   <input class="smallint" type="number" id="skip" name="skip" onchange="sp_skip()" size="2" value="1" min="0" step="1">teeth.<br>
-
+  <label for="autoscale">autoscale</label>
+  <input type="checkbox" id="autoscale" name="scale" onclick="sp_autoscale()">
+  <select id="domain" onchange="sp_domain()">
+    <option onclick="sp_domain()" value="white">     White</option>
+    <option onclick="sp_domain()" value="gainsboro"> Gainsboro</option>
+    <option onclick="sp_domain()" value="cornsilk">  Cornsilk</option>
+    <option onclick="sp_domain()" value="silver">    Silver</option>
+    <option onclick="sp_domain()" value="gray">      Gray</option>
+    <option onclick="sp_domain()" value="slategray"> Slate Gray</option>
+    <option onclick="sp_domain()" value="black">     Black</option>
+    <option onclick="sp_domain()" value="palette">   from palette</option>
+  </select>
+  <br>
   <br>
   <button class="butt99" type="button" name="draw" onclick='sp_draw()' value="Draw"> Draw </button>
   <button class="butt99" type="button" name="new"  onclick='sp_new()'  value="New">  New </button><br>
@@ -821,11 +1098,14 @@ sp_classic();
 sp_automatic();
 sp_ring();
 sp_gear();
+sp_starttooth();
 sp_penhole();
 sp_color();
 sp_thick();
 sp_repeat();
 sp_skip();
+sp_autoscale();
+sp_domain();
 sp_new();
 sp_draw();
 </script>
